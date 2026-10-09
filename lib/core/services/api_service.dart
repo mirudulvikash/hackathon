@@ -26,7 +26,7 @@ class ApiService {
   static const Duration timeoutDuration = Duration(seconds: 5);
 
   // Users
-  static Future<Map<String, dynamic>?> register({
+  static Future<Map<String, dynamic>> register({
     required String name,
     required String email,
     required String password,
@@ -48,11 +48,17 @@ class ApiService {
         }),
       ).timeout(timeoutDuration);
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final data = jsonDecode(response.body);
+        data['success'] = true;
+        return data;
+      } else if (response.statusCode == 400 || response.statusCode == 409) {
+        return {'success': false, 'error': 'EMAIL_ALREADY_EXISTS', 'message': 'An account with this email address already exists.'};
+      } else if (response.statusCode == 422) {
+        return {'success': false, 'error': 'VALIDATION_ERROR', 'message': 'Please check the information entered and try again.'};
       }
-      return null;
+      return {'success': false, 'error': 'SERVER_ERROR', 'message': 'An unexpected server error occurred. Please try again later.'};
     } catch (e) {
-      return null;
+      return {'success': false, 'error': 'NETWORK_ERROR', 'message': 'Unable to connect to the server. Please try again.'};
     }
   }
 
@@ -135,4 +141,90 @@ class ApiService {
       return false;
     }
   }
+
+  static Future<Map<String, dynamic>?> getProgress(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/progress/$userId'),
+      ).timeout(timeoutDuration);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<String?> sendChatMessage(List<Map<String, String>> messages, {int? userId}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/chat'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'messages': messages,
+          'user_id': userId,
+        }),
+      ).timeout(const Duration(seconds: 30));
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['reply'];
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Achievements
+  static Future<Map<String, dynamic>?> logActivity(int userId, {String? disasterId, String? activityType, String? customDate}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/achievements/log-activity'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'disaster_id': disasterId,
+          'activity_type': activityType ?? 'lesson',
+          'custom_date': customDate,
+        }),
+      ).timeout(timeoutDuration);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getUserAchievements(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/achievements/$userId'),
+      ).timeout(timeoutDuration);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getCertificate(int userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/achievements/$userId/certificate'),
+      ).timeout(timeoutDuration);
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
 }
+

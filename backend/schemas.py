@@ -88,7 +88,57 @@ class ProgressResponse(BaseModel):
 
 class UserProgressResponse(BaseModel):
     overall_completion_percentage: float
+    topics_assessed_count: int
+    average_quiz_score: float
     topics: List[ProgressResponse]
     weak_areas: List[str]
     recommended_next_topic: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
+
+class ChatMessage(BaseModel):
+    role: str  # "user" or "model"
+    content: str
+    
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+    user_id: Optional[int] = None
+
+class ChatResponse(BaseModel):
+    reply: str
+
+
+class ActivityLogSubmit(BaseModel):
+    user_id: int
+    disaster_id: Optional[str] = None
+    activity_type: Optional[str] = "lesson"
+    custom_date: Optional[str] = None
+
+class AchievementResponse(BaseModel):
+    badge_key: str
+    title: str
+    unlocked: bool
+    unlocked_at: Optional[str] = None
+    certificate_id: Optional[str] = None
+    model_config = ConfigDict(from_attributes=True)
+
+class UserAchievementsResponse(BaseModel):
+    user_id: int
+    current_streak: int
+    longest_streak: int
+    total_active_days: int
+    first_lesson_date: Optional[str] = None
+    last_activity_date: Optional[str] = None
+    achievements: List[AchievementResponse]
+    newly_unlocked: List[AchievementResponse] = []
+    certificate_id: Optional[str] = None
+    certificate_unlocked: bool = False
+    model_config = ConfigDict(from_attributes=True)
+
+class CertificateResponse(BaseModel):
+    certificate_id: str
+    student_name: str
+    title: str
+    subtitle: str
+    issue_date: str
+    total_days: int
+

@@ -1,12 +1,63 @@
 import 'package:flutter/material.dart';
 import '../../models/disaster_model.dart';
 
+/// Presentation metadata (display titles, module counts, durations, subtitles)
+/// keyed by disaster id, used by the redesigned Learn & Dashboard screens.
+const Map<String, Map<String, Object?>> moduleDetails = {
+  'd1': {
+    'title': 'Flood Safety Protocol',
+    'modules': 4,
+    'minutes': 25,
+    'subtitle': 'Rising Waters & Rescue',
+  },
+  'd2': {
+    'title': 'Earthquake Drills',
+    'modules': 3,
+    'minutes': 18,
+    'subtitle': 'Drop, Cover & Hold On',
+  },
+  'd3': {
+    'title': 'Cyclone Readiness',
+    'modules': 3,
+    'minutes': 20,
+    'subtitle': 'Coastal Storm Precautions',
+  },
+  'd4': {
+    'title': 'Landslide Early Detection',
+    'modules': 2,
+    'minutes': 15,
+    'subtitle': 'Hillside Slope Warning',
+  },
+  'd5': {
+    'title': 'Campus Fire & Electrical Safety',
+    'modules': 4,
+    'minutes': 30,
+    'subtitle': 'Extinguishers & Egress',
+  },
+  'd6': {
+    'title': 'Chemical & Lab Safety',
+    'modules': 3,
+    'minutes': 22,
+    'subtitle': 'Lab Spills & PPE Gear',
+  },
+};
+
+String moduleTitle(DisasterModel d) =>
+    moduleDetails[d.id]?['title'] as String? ?? d.name;
+int moduleCount(DisasterModel d) =>
+    moduleDetails[d.id]?['modules'] as int? ?? 4;
+int moduleMinutes(DisasterModel d) =>
+    moduleDetails[d.id]?['minutes'] as int? ?? 20;
+String moduleSubtitle(DisasterModel d) =>
+    moduleDetails[d.id]?['subtitle'] as String? ?? d.shortDescription;
+
 final List<DisasterModel> mockDisasters = [
   const DisasterModel(
     id: 'd1',
     name: 'Flood',
     category: 'Natural',
     iconName: Icons.water,
+    imagePath: 'assets/images/flood.png',
     shortDescription: 'Overflow of water onto normally dry land.',
     whatIsIt: 'A flood is an overflow of water that submerges land that is usually dry.',
     causes: [
@@ -48,6 +99,7 @@ final List<DisasterModel> mockDisasters = [
     name: 'Earthquake',
     category: 'Natural',
     iconName: Icons.broken_image,
+    imagePath: 'assets/images/earthquake.png',
     shortDescription: 'Sudden shaking of the ground caused by seismic waves.',
     whatIsIt: 'An earthquake is the shaking of the surface of the Earth resulting from a sudden release of energy in the Earth\'s lithosphere.',
     causes: [
@@ -90,6 +142,7 @@ final List<DisasterModel> mockDisasters = [
     name: 'Cyclone',
     category: 'Natural',
     iconName: Icons.storm,
+    imagePath: 'assets/images/cyclone.png',
     shortDescription: 'Violent storms with intense circular winds.',
     whatIsIt: 'A cyclone is a large scale air mass that rotates around a strong center of low atmospheric pressure, accompanied by destructive winds and heavy rain.',
     causes: [
@@ -131,6 +184,7 @@ final List<DisasterModel> mockDisasters = [
     name: 'Landslide',
     category: 'Natural',
     iconName: Icons.terrain,
+    imagePath: 'assets/images/landslide.png',
     shortDescription: 'Movement of rock, earth, or debris down a sloped section of land.',
     whatIsIt: 'A landslide is the downward sliding of a relatively dry mass of earth and rock.',
     causes: [
@@ -172,6 +226,7 @@ final List<DisasterModel> mockDisasters = [
     name: 'Fire Accidents',
     category: 'Man-Made',
     iconName: Icons.local_fire_department,
+    imagePath: 'assets/images/fire_safety.png',
     shortDescription: 'Uncontrolled fires in buildings, schools, or public spaces.',
     whatIsIt: 'A fire accident is an uncontrolled fire that can cause severe death, injury, and property damage.',
     causes: [
@@ -214,6 +269,7 @@ final List<DisasterModel> mockDisasters = [
     name: 'Chemical & Lab Accidents',
     category: 'Man-Made',
     iconName: Icons.science,
+    imagePath: 'assets/images/chemical_spill.png',
     shortDescription: 'Spills or exposure to hazardous chemicals in labs or industries.',
     whatIsIt: 'Accidental release or spill of toxic, corrosive, or flammable chemicals.',
     causes: [

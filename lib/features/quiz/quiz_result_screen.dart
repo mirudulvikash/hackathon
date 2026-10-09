@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/quiz_model.dart';
 import '../../providers/learning_progress_provider.dart';
+import '../../providers/user_provider.dart';
+import '../../providers/achievement_provider.dart';
 
 class QuizResultScreen extends StatefulWidget {
   final QuizResult result;
@@ -18,12 +20,12 @@ class QuizResultScreen extends StatefulWidget {
 }
 
 class _QuizResultScreenState extends State<QuizResultScreen> {
+  bool _isSaving = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LearningProgressProvider>().saveQuizResult(widget.result);
-    });
+    // Intentionally removed auto-save; waiting for user action as per requirements
   }
 
   @override
@@ -123,11 +125,44 @@ class _QuizResultScreenState extends State<QuizResultScreen> {
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: () {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                onPressed: _isSaving ? null : () async {
+                  setState(() => _isSaving = true);
+                  
+                  final userProvider = context.read<UserProvider>();
+                  final userId = userProvider.userId ?? 1;
+                  
+                  bool saved = await context.read<LearningProgressProvider>().saveQuizResult(widget.result, userId: userId);
+                  if (saved && context.mounted) {
+                    await context.read<AchievementProvider>().fetchAchievements(userId);
+                  }
+                  
+                  if (!context.mounted) return;
+                  setState(() => _isSaving = false);
+                  
+                  if (saved) {
+                     if (!context.mounted) return;
+                     ScaffoldMessenger.of(context).showSnackBar(
+                       const SnackBar(
+                         content: Text('Your test result has been saved successfully.'),
+                         backgroundColor: Colors.green,
+                       ),
+                     );
+                     // Navigate to Dashboard and allow re-render
+                     Navigator.of(context).popUntil((route) => route.isFirst);
+                  } else {
+                     if (!context.mounted) return;
+                     ScaffoldMessenger.of(context).showSnackBar(
+                       const SnackBar(
+                         content: Text('Unable to save your result. Please try again.'),
+                         backgroundColor: Colors.redAccent,
+                       ),
+                     );
+                  }
                 },
-                icon: const Icon(Icons.home),
-                label: const Text('Save & Check Dashboard'),
+                icon: _isSaving 
+                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                   : const Icon(Icons.home),
+                label: Text(_isSaving ? 'Saving...' : 'Save & Check Dashboard'),
                 style: FilledButton.styleFrom(
                   padding: const EdgeInsets.all(16),
                   textStyle: const TextStyle(fontWeight: FontWeight.bold),

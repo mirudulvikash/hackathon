@@ -47,6 +47,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       final userProvider = context.read<UserProvider>();
       bool success = false;
 
+      Map<String, dynamic>? registerResult;
       if (_isLogin) {
         success = await userProvider.login(
           _emailController.text.trim(),
@@ -61,7 +62,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           return;
         }
 
-        success = await userProvider.register(
+        registerResult = await userProvider.register(
           name: _nameController.text.trim(),
           email: _emailController.text.trim(),
           password: _passwordController.text.trim(),
@@ -73,16 +74,31 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
 
       setState(() => _isLoading = false);
 
-      if (success) {
-        if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const MainScaffold()),
-        );
+      if (_isLogin) {
+        if (success) {
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainScaffold()),
+          );
+        } else {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Login failed. Check credentials.')),
+          );
+        }
       } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_isLogin ? 'Login failed. Check credentials.' : 'Registration failed. Email might exist.')),
-        );
+        if (registerResult != null && registerResult['success'] == true) {
+          if (!mounted) return;
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const MainScaffold()),
+          );
+        } else {
+          if (!mounted) return;
+          String errorMsg = registerResult != null ? (registerResult['message'] ?? 'Registration failed.') : 'Registration failed.';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMsg)),
+          );
+        }
       }
     }
   }

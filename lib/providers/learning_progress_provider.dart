@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/quiz_model.dart';
 import '../models/disaster_model.dart';
 import '../core/mock_data/disaster_data.dart';
@@ -47,40 +45,40 @@ class TopicProgress {
 
 class LearningProgressProvider extends ChangeNotifier {
   final Map<String, TopicProgress> _progress = {};
-  int streakDays = 5; // Impressive demo data
+  int streakDays = 0; // Removed dummy data
   
   LearningProgressProvider() {
-    _loadFromPrefs();
+    // Only load from prefs if we want offline support, but we should clear on logout.
   }
 
-  Future<void> _loadFromPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonStr = prefs.getString('learning_progress');
-    if (jsonStr != null) {
-      final map = json.decode(jsonStr) as Map<String, dynamic>;
-      map.forEach((key, value) {
-        _progress[key] = TopicProgress.fromJson(value);
-      });
-    } else {
-      _initDemoData();
-    }
+  void reset() {
+    _progress.clear();
+    _backendStats = null;
+    streakDays = 0;
     notifyListeners();
   }
 
-  Future<void> _saveToPrefs() async {
-    final prefs = await SharedPreferences.getInstance();
-    final map = _progress.map((key, value) => MapEntry(key, value.toJson()));
-    await prefs.setString('learning_progress', json.encode(map));
-  }
+  Map<String, dynamic>? _backendStats;
 
-  
-  void _initDemoData() {
-    // Pre-populate realistic, impressive demo progress data
-    _progress['d1'] = TopicProgress(disasterId: 'd1', isRead: true, highestQuizScore: 4, totalQuizQuestions: 4); // Flood: 100%
-    _progress['d5'] = TopicProgress(disasterId: 'd5', isRead: true, highestQuizScore: 4, totalQuizQuestions: 4); // Fire: 100%
-    _progress['d2'] = TopicProgress(disasterId: 'd2', isRead: true, highestQuizScore: 3, totalQuizQuestions: 4); // Earthquake 75% -> 100% mastery
-    _progress['d3'] = TopicProgress(disasterId: 'd3', isRead: true); // Cyclone: 50% (Only read)
-    _progress['d6'] = TopicProgress(disasterId: 'd6', isRead: true, highestQuizScore: 1, totalQuizQuestions: 4); // Lab Accident: 75% progress but < 60% score (Weak Area)
+  Future<void> syncProgress(int userId) async {
+    final stats = await ApiService.getProgress(userId);
+    if (stats != null) {
+      _progress.clear(); // Ensure we don't bleed previous user state
+      _backendStats = stats;
+      // Merge progress into topic map
+      for (var t in stats['topics']) {
+        final dId = t['disaster_id'];
+        if (!_progress.containsKey(dId)) {
+          _progress[dId] = TopicProgress(disasterId: dId);
+        }
+        _progress[dId]!.isRead = true;
+        if (t['completion_percentage'] == 100.0) {
+           _progress[dId]!.highestQuizScore = 1; // Mark as passed
+           _progress[dId]!.totalQuizQuestions = 1;
+        }
+      }
+      notifyListeners();
+    }
   }
 
   void markTopicAsRead(String disasterId) {
@@ -88,40 +86,41 @@ class LearningProgressProvider extends ChangeNotifier {
       _progress[disasterId] = TopicProgress(disasterId: disasterId);
     }
     _progress[disasterId]!.isRead = true;
-    _saveToPrefs();
     notifyListeners();
   }
   
-  void saveQuizResult(QuizResult result) {
+  Future<bool> saveQuizResult(QuizResult result, {int userId = 1}) async {
     if (!_progress.containsKey(result.disasterId)) {
       _progress[result.disasterId] = TopicProgress(disasterId: result.disasterId);
     }
     
     final currentProgress = _progress[result.disasterId]!;
-    // Automatically flag as read since they obviously interacted enough to take the quiz
     currentProgress.isRead = true; 
     
     if (currentProgress.highestQuizScore == null || result.score > currentProgress.highestQuizScore!) {
       currentProgress.highestQuizScore = result.score;
       currentProgress.totalQuizQuestions = result.totalQuestions;
     }
-    _saveToPrefs();
-    notifyListeners();
-    // Silently sync to backend
-    ApiService.submitQuiz(result.disasterId, result.score, result.totalQuestions);
+    
+    bool ok = await ApiService.submitQuiz(result.disasterId, result.score, result.totalQuestions, userId: userId);
+    if (ok) {
+       await syncProgress(userId); // Re-sync dashboard!
+    }
+    return ok;
   }
   
   double get overallCompletionPercentage {
-    if (mockDisasters.isEmpty) return 0.0;
-    double total = 0;
-    for (var d in mockDisasters) {
-      total += _progress[d.id]?.percentage ?? 0.0;
+    if (_backendStats != null && _backendStats!['overall_completion_percentage'] != null) {
+      return _backendStats!['overall_completion_percentage'] / 100.0; // Assume backend returns 0-100, we need 0.0-1.0
     }
-    return total / mockDisasters.length;
+    return 0.0;
   }
   
   int get completedCategoriesCount {
-    return _progress.values.where((p) => p.percentage == 100.0).length;
+    if (_backendStats != null && _backendStats!['topics_assessed_count'] != null) {
+      return _backendStats!['topics_assessed_count'];
+    }
+    return _progress.values.where((p) => p.highestQuizScore != null).length;
   }
 
   int get totalAssessmentsTaken {
@@ -129,6 +128,9 @@ class LearningProgressProvider extends ChangeNotifier {
   }
   
   double get averageQuizScore {
+    if (_backendStats != null && _backendStats!['average_quiz_score'] != null) {
+      return (_backendStats!['average_quiz_score'] as num).toDouble();
+    }
     final quizzesTaken = _progress.values.where((p) => p.highestQuizScore != null).toList();
     if (quizzesTaken.isEmpty) return 0.0;
     double totalPercent = 0.0;
@@ -150,17 +152,20 @@ class LearningProgressProvider extends ChangeNotifier {
   }
   
   DisasterModel? getRecommendedNextTopic(String userLocation) {
-    // 1. Incomplete topics relevant to user location
-    final relevantIncomplete = mockDisasters.where((d) {
-      return d.relevantLocations.contains(userLocation) && (_progress[d.id]?.percentage ?? 0) < 100;
+    // Only suggest topics the user has ACTUALLY started but not completed
+    final inProgress = mockDisasters.where((d) {
+      final p = _progress[d.id]?.percentage ?? 0;
+      return p > 0 && p < 100;
     }).toList();
-    if (relevantIncomplete.isNotEmpty) return relevantIncomplete.first;
     
-    // 2. Any incomplete topic
-    final generallyIncomplete = mockDisasters.where((d) {
-      return (_progress[d.id]?.percentage ?? 0) < 100;
-    }).toList();
-    return generallyIncomplete.isNotEmpty ? generallyIncomplete.first : null;
+    if (inProgress.isNotEmpty) {
+      // Prioritize location-relevant ones they started
+      final relevant = inProgress.where((d) => d.relevantLocations.contains(userLocation)).toList();
+      return relevant.isNotEmpty ? relevant.first : inProgress.first;
+    }
+    
+    // No learning activity yet
+    return null;
   }
   
   TopicProgress? getProgressForTopic(String disasterId) => _progress[disasterId];

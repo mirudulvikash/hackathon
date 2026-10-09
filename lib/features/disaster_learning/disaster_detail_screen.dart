@@ -2,18 +2,22 @@ import 'package:flutter/material.dart';
 import '../../models/disaster_model.dart';
 import 'package:provider/provider.dart';
 import '../../providers/learning_progress_provider.dart';
+import '../../providers/user_provider.dart';
+import '../../providers/achievement_provider.dart';
 import '../quiz/quiz_screen.dart';
 import '../../core/mock_data/quiz_data.dart';
 
 class DisasterDetailScreen extends StatelessWidget {
   final DisasterModel disaster;
+  final int initialTabIndex;
 
-  const DisasterDetailScreen({super.key, required this.disaster});
+  const DisasterDetailScreen({super.key, required this.disaster, this.initialTabIndex = 0});
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 4,
+      initialIndex: initialTabIndex,
       child: Scaffold(
         appBar: AppBar(
           title: Text(disaster.name),
@@ -124,11 +128,25 @@ class DisasterDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
-            onPressed: () {
+            onPressed: () async {
               context.read<LearningProgressProvider>().markTopicAsRead(disaster.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${disaster.name} marked as Read!')),
-              );
+              final userId = context.read<UserProvider>().userId ?? 1;
+              final newlyUnlocked = await context.read<AchievementProvider>().logActivity(userId, disasterId: disaster.id, activityType: 'lesson');
+              
+              if (!context.mounted) return;
+              if (newlyUnlocked.isNotEmpty) {
+                final ach = newlyUnlocked.first;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('🎉 Achievement Unlocked: ${ach['title']}!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${disaster.name} marked as Read!')),
+                );
+              }
             },
             icon: const Icon(Icons.done_all),
             label: const Text('Mark as Read'),

@@ -17,6 +17,7 @@ class DisasterModel {
   final List<String> relevantLocations;
   final String? recommendationReason;
   final int priorityScore;
+  final String? imagePath;
 
   const DisasterModel({
     required this.id,
@@ -35,6 +36,7 @@ class DisasterModel {
     required this.relevantLocations,
     this.priorityScore = 0,
     this.recommendationReason,
+    this.imagePath,
   });
 
   factory DisasterModel.fromJson(Map<String, dynamic> json) {
@@ -49,12 +51,21 @@ class DisasterModel {
           .toList();
     }
     
-    // Map backend categories to flutter icons visually if needed, though here we just default safely
     IconData getIcon(String cat) {
       if (cat.contains('Earthquake')) return Icons.landscape;
       if (cat.contains('Flood')) return Icons.water_damage;
       if (cat.contains('Fire')) return Icons.local_fire_department;
       return Icons.warning;
+    }
+
+    String? mapImagePath(String name) {
+      if (name.contains('Earthquake')) return 'assets/images/earthquake.png';
+      if (name.contains('Flood')) return 'assets/images/flood.png';
+      if (name.contains('Fire')) return 'assets/images/fire_safety.png';
+      if (name.contains('Cyclone')) return 'assets/images/cyclone.png';
+      if (name.contains('Landslide')) return 'assets/images/landslide.png';
+      if (name.contains('Electrical') || name.contains('Lab')) return 'assets/images/chemical_spill.png';
+      return json['imagePath'];
     }
 
     return DisasterModel(
@@ -74,6 +85,7 @@ class DisasterModel {
       mistakesToAvoid: getPhase('mistakes'),
       priorityScore: json['priority_score'] ?? 0,
       recommendationReason: json['recommendation_reason'],
+      imagePath: mapImagePath(json['disaster_name'] ?? ''),
     );
   }
 }

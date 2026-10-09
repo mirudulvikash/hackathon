@@ -95,7 +95,7 @@ class UserProvider extends ChangeNotifier {
     return false;
   }
   
-  Future<bool> register({
+  Future<Map<String, dynamic>> register({
     required String name,
     required String email,
     required String password,
@@ -111,20 +111,10 @@ class UserProvider extends ChangeNotifier {
       institution: institution,
       location: location,
     );
-    if (res != null) {
-      _userId = res['user_id'];
-      _profile = UserProfile(
-        name: name,
-        role: role,
-        institution: institution,
-        location: location,
-        preferredCategories: [],
-      );
-      await _saveToPrefs();
-      _syncWithBackend();
-      return true;
+    if (res['success'] == true) {
+      // Intentionally omitting automatic login to enforce Registration -> Login explicit flow
     }
-    return false;
+    return res;
   }
   void updateProfile({
     String? name,

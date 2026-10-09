@@ -1,9 +1,11 @@
 from sqlalchemy.orm import Session
 from models import Disaster, SafetyGuideline, Quiz, User, UserProfile, Progress, QuizResult
 from database import engine, Base
-from passlib.context import CryptContext
+import bcrypt
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def get_password_hash(password: str) -> str:
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 def seed_data(db: Session):
     Base.metadata.create_all(bind=engine)
@@ -18,7 +20,7 @@ def seed_data(db: Session):
             "id": "d1",
             "name": "Flood",
             "category": "Natural",
-            "short_desc": "Overflow of water submerging land.",
+            "short_desc": "Prepare for floods and learn how to stay safe during heavy rains.",
             "desc": "Floods are the most frequent type of natural disaster and occur when an overflow of water submerging land that is usually dry.",
             "causes": ["Heavy rainfall", "River overflow", "Dam failures"],
             "warning_signs": ["Continuous heavy rain", "Rising river levels"],
@@ -28,7 +30,7 @@ def seed_data(db: Session):
             "id": "d2",
             "name": "Earthquake",
             "category": "Natural",
-            "short_desc": "Sudden shaking of the ground.",
+            "short_desc": "Learn how to stay safe before, during and after an earthquake.",
             "desc": "An earthquake is a sudden release of energy in the Earth's crust that creates seismic waves.",
             "causes": ["Tectonic plate movements", "Volcanic activity"],
             "warning_signs": ["Ground shaking", "Unusual animal behavior"],
@@ -38,27 +40,27 @@ def seed_data(db: Session):
             "id": "d3",
             "name": "Cyclone",
             "category": "Natural",
-            "short_desc": "Violent storm with high winds.",
+            "short_desc": "Be prepared for cyclones and follow safety guidelines during storms.",
             "desc": "Cyclones are characterized by inward spiraling winds that rotate counterclockwise.",
             "causes": ["Warm ocean waters", "Atmospheric instability"],
             "warning_signs": ["High winds", "Dark heavy sky", "Sudden drop in pressure"],
-            "locations": ["Chennai", "Kanyakumari"]
+            "locations": ["Chennai", "Kanyakumari", "Coimbatore"]
         },
         {
             "id": "d4",
             "name": "Landslide",
             "category": "Natural",
-            "short_desc": "Collapse of a mass of earth.",
+            "short_desc": "Understand landslide risks and learn how to stay safe in hilly areas.",
             "desc": "Landslides include rock falls, deep failure of slopes, and shallow debris flows.",
             "causes": ["Heavy rain", "Earthquakes", "Deforestation"],
             "warning_signs": ["Cracks on slopes", "Tilting trees"],
-            "locations": ["Nilgiris"]
+            "locations": ["Nilgiris", "Coimbatore"]
         },
         {
             "id": "d5",
             "name": "Fire Accidents",
             "category": "Man-Made",
-            "short_desc": "Uncontrolled fire in a building.",
+            "short_desc": "Understand fire safety measures and learn how to respond in case of fire.",
             "desc": "Fire accidents can happen due to negligence, electrical faults, or accidents.",
             "causes": ["Short circuits", "Gas leaks", "Carelessness"],
             "warning_signs": ["Smoke", "Burning smell", "Sparks"],
@@ -68,7 +70,7 @@ def seed_data(db: Session):
             "id": "d6",
             "name": "Electrical/Lab Accidents",
             "category": "Man-Made",
-            "short_desc": "Accidents in academic environments.",
+            "short_desc": "Stay safe around electricity and learn lab safety procedures.",
             "desc": "Laboratory or electrical accidents often involve chemical spills or electrocution.",
             "causes": ["Chemical mishandling", "Faulty wiring"],
             "warning_signs": ["Chemical smell", "Flickering lights", "Frayed wires"],
@@ -120,7 +122,7 @@ def seed_data(db: Session):
     demo_user = User(
         name="Demo Learner",
         email="demo@munnarivu.com",
-        password_hash=pwd_context.hash("demo123"),
+        password_hash=get_password_hash("demo123"),
         role="College Student"
     )
     db.add(demo_user)

@@ -14,6 +14,8 @@ class User(Base):
     profile = relationship("UserProfile", back_populates="user", uselist=False)
     progress_records = relationship("Progress", back_populates="user")
     quiz_results = relationship("QuizResult", back_populates="user")
+    activity_logs = relationship("ActivityLog", back_populates="user")
+    achievements = relationship("Achievement", back_populates="user")
 
 
 class UserProfile(Base):
@@ -94,3 +96,29 @@ class QuizResult(Base):
 
     user = relationship("User", back_populates="quiz_results")
     disaster = relationship("Disaster", back_populates="quiz_results")
+
+
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+
+    log_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    activity_date = Column(String(10), nullable=False, index=True) # "YYYY-MM-DD"
+    disaster_id = Column(String(50), nullable=True)
+    activity_type = Column(String(50), default="lesson") # "lesson", "quiz"
+
+    user = relationship("User", back_populates="activity_logs")
+
+
+class Achievement(Base):
+    __tablename__ = "achievements"
+
+    achievement_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    badge_key = Column(String(50), nullable=False) # "first_step", "silver_badge", "safety_champion", "champion_100"
+    title = Column(String(150), nullable=False)
+    unlocked_at = Column(String(30), nullable=False)
+    certificate_id = Column(String(100), nullable=True)
+
+    user = relationship("User", back_populates="achievements")
+
